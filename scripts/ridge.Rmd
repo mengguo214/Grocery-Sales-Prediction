@@ -1,0 +1,58 @@
+---
+title: "ridge"
+author: "Fangyu Yu"
+date: "11/19/2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r mse}
+library(readxl)
+library(leaps)
+library(glmnet)
+my_data <- list()
+mse_ridge<-list()
+MSEj <- list()
+for (j in 1:8) {
+  my_data[[j]] <- read_excel(paste("Store",j+1,"-1.xlsx",sep = ""))
+  
+  #delet null value
+  Store = na.omit(my_data[[j]])
+
+  train = (Store$Random == "Train")
+  Store.train = Store[train,]
+  Store.test = Store[!train,]
+
+  depenvar=c(colnames(Store)[99:122])
+  m = paste(colnames(Store)[3:98],collapse="+")
+
+  MSEj = c()
+
+  for(i in 1:24){
+  x.train=model.matrix (as.formula(paste(depenvar[i],"~",m,sep="")) ,Store.train)
+  x.test=model.matrix (as.formula(paste(depenvar[i],"~",m,sep="")) ,Store.test)
+  y.train=unlist(Store.train[depenvar[i]])
+  y.test=unlist(Store.test[depenvar[i]])
+  
+  grid=10^seq(10,-2,length=100)
+  ridge.mod =glmnet(x.train,y.train,alpha =0, lambda =grid)
+  
+  set.seed (1)
+  cv.out =cv.glmnet(x.train,y.train,alpha =0)
+  bestlam =cv.out$lambda.min
+  ridge.pred=predict(ridge.mod,s=bestlam,newx=x.test)
+  
+  MSEj = append(MSEj,mean((ridge.pred -y.test)^2)^0.5)
+  }
+  mse_ridge[[j]] = MSEj
+}
+
+```
+```{r}
+print(mse_ridge)
+```
+

@@ -1,0 +1,148 @@
+---
+title: "shrinkage"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## shrinkage optimization
+
+tried ntree = 500 and ntree = 5000, there is not much improvement but using 5000 is very time-consuming. So use ntree = 500 and optimize shinkage through out the process.
+
+first, find the shrinkage in store 1
+```{r }
+library(readxl)
+library(tree)
+library(Metrics)
+library(randomForest)
+library(gbm)
+
+# read file
+Store = list()
+set.seed(1)
+Store[[1]] = read_excel("Store2-1.xlsx")
+Store[[2]] = read_excel("Store3-1.xlsx")
+Store[[3]] = read_excel("Store4-1.xlsx")
+Store[[4]] = read_excel("Store5-1.xlsx")
+Store[[5]] = read_excel("Store6-1.xlsx")
+Store[[6]] = read_excel("Store7-1.xlsx")
+Store[[7]] = read_excel("Store8-1.xlsx")
+Store[[8]] = read_excel("Store9-1.xlsx")
+
+
+
+```
+
+```{r }
+RMSE = list()
+#best_shrink = list()
+best_n = list()
+S = 100
+for (i in 6){
+  print(i)
+}
+  
+for (i in 8){
+  train = (Store[[i]]$Random == 'Train')
+  store_train = Store[[i]][train,]
+  store_test = Store[[i]][!train,]
+  y = data.frame(Store[[i]][99:122])
+  y_train = data.frame(store_train[99:122])
+  y_test = data.frame(store_test[99:122])
+
+ 
+  # try 100 shrinkage
+  shrink = c(1:S)
+  boost.mse = c(1:S)
+  boost.mse[1:S] = 0
+
+  boost.store = list()
+  pred.boost = c()
+  s = c()
+  
+  
+  for (j in 1:24){
+    for (l in 1:S){
+      set.seed(1)
+      boost.store = gbm(y_train[,j]~.-Random,store_train,distribution = "gaussian", n.trees=1000,shrinkage=(l * (1/S)),interaction.depth=6)
+      pred.boost = predict(boost.store,newdata=store_test,n.trees=1000)
+      boost.mse[l] = rmse(y_test[,j], pred.boost)
+}
+    s[j] = shrink[boost.mse == min(boost.mse)]
+    print(j)
+    
+}
+  #print(i)
+  
+  best_shrink[[i]] = s
+  
+}
+
+```
+```{r}
+for (i in 1:8){
+  train = (Store[[i]]$Random == 'Train')
+  store_train = Store[[i]][train,]
+  store_test = Store[[i]][!train,]
+  y = data.frame(Store[[i]][99:122])
+  y_train = data.frame(store_train[99:122])
+  y_test = data.frame(store_test[99:122])
+  RMSE_boosted = c()
+  N = c()
+  number = c(1:100)
+  boost.mse = c()
+  
+  for (j in 1:24){
+     k = 1
+    for (n in number){
+      set.seed(1)
+      boost.store = gbm(y_train[,j]~.-Random,store_train,distribution = "gaussian", n.trees=(n*100),shrinkage=(best_shrink[[i]][j]/100),interaction.depth=6)
+      pred.boost = predict(boost.store,newdata=store_test,n.trees=(n*100))
+      boost.mse[n] = rmse(y_test[,j], pred.boost)
+      #k = k+1
+}
+    #N[j] = number[boost.mse == min(boost.mse)]
+    RMSE_boosted[j] = min(boost.mse)
+    print(j)
+    print(RMSE_boosted)
+}
+  print(i)
+  #best_n[[i]] = N
+  RMSE[[i]] = RMSE_boosted
+  
+}
+name = c('Store_1', 'Store_2',  'Store_3',  'Store_4',  'Store_5', 'Store_6', 'Store_7',  'Store_8')
+number
+names(RMSE) = paste(name)
+write.csv(RMSE, "boosted_gm.csv", row.names=FALSE)
+  
+```
+180.673301   1.887388  32.879792  65.771520   5.804888  53.809279  17.097518  54.153896  86.312446
+[10]  51.058330  65.761221  73.752073 129.730672 129.737836  26.600013  25.437829  17.904442 175.713388
+[19]  27.585116  53.117777 137.940631   3.000032  89.611827  31.567549
+
+
+
+
+best_shrink = list(c(37,1,25,9,1,1,1,1,2,26,1,24,26,29,1,1,7,41,11,17,1,1 ,1 ,12),
+                   c(4,1  ,3 ,28  ,1  ,2  ,1,  1, 19,  2,  2, 16,  1,  1, 37,  1,  1,  1,  1, 37, 22,  2,  1, 19),
+                   c(28  ,6  ,1  ,1 , 1 ,54 ,29 , 1 ,40  ,1 , 1  ,1,  1 , 1 , 1 , 1 , 1 , 1 ,43 , 1  ,1, 38, 11 , 1),
+                   c(1 , 7, 36 , 2 , 1,  1 , 1  ,1 , 1 , 2  ,1,  8  ,1, 52,  1 ,93 , 1 , 1,  1,  3, 13, 51 ,12,  1),
+                   c(1,  5, 18  ,6 ,32, 27 , 7 , 9 , 1 , 2 ,26 , 1 , 1,  2 ,22,  1, 16,  9,  1,  9,  8,  9,  3,  2),
+                   c(1, 27, 49  ,6 ,54  ,1 ,24, 26 ,35 ,14, 28  ,8,  1 , 1,  2, 93, 1 , 1, 1, 13, 25, 56, 5, 5),
+                   c(24 ,51, 39, 39,  1 , 3, 13,  1 , 1,  5 ,58, 40,  1,  1,  1,  1, 12,  1,  1, 27, 20, 69, 33, 54),
+                   c(44,1 ,2  ,1, 94, 26,  1,  1,  1,  6,  1,  1, 48, 73, 12,  1, 37,  2  ,2  ,1  ,1  ,1  ,1  ,7))
+
+train = (Store[[1]]$Random == 'Train')
+store_train = Store[[1]][train,]
+store_test = Store[[1]][!train,]
+y = data.frame(Store[[1]][99:122])
+y_train = data.frame(store_train[99:122])
+y_test = data.frame(store_test[99:122])
+RMSE_boosted = c()
+set.seed(1)
+boost.store = gbm(y_train[,1]~.-Random,store_train,distribution = "gaussian", n.trees=500,shrinkage=(best_shrink[[1]][1]/100),interaction.depth=6)
+pred.boost = predict(boost.store,newdata=store_test,n.trees=2500)
+boost.mse[k] = rmse(y_test[,1], pred.boost)

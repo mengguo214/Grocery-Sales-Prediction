@@ -1,0 +1,89 @@
+---
+title: "Group_knn"
+author: "Yudong Yang"
+date: "11/11/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Read Excel
+
+This part should read in all the 8 files and store them into variables.  
+In the meanwhile, considering whether to use different variables for different items in stores.  
+
+```{r}
+library(readxl)
+```
+```{r store}
+store1 = read_excel("Store2-1.xlsx")
+store2 = read_excel("Store3-1.xlsx")
+store3 = read_excel("Store4-1.xlsx")
+store4 = read_excel("Store5-1.xlsx")
+store5 = read_excel("Store6-1.xlsx")
+store6 = read_excel("Store7-1.xlsx")
+store7 = read_excel("Store8-1.xlsx")
+store8 = read_excel("Store9-1.xlsx")
+store = list(store1,store2,store3,store4,store5,store6,store7,store8)
+```
+```{r train}
+train_variable =  list()
+train_respondent = list()
+for (i in 1:8){
+  train_element = store[i][[1]]
+  a = (train_element[,123] == "Train")
+  train_element = train_element[a,]
+  train_variable[[i]] = train_element[,3:98]
+  train_respondent[[i]] = train_element[,99:122]
+}
+```
+```{r test}
+test_variable =  list()
+test_respondent = list()
+for (i in 1:8){
+  test_element = store[i][[1]]
+  a = (test_element[,123] == "Test")
+  test_element = test_element[a,]
+  test_variable[[i]] = test_element[,3:98]
+  test_respondent[[i]] = test_element[,99:122]
+}
+```
+## the above shows the step for reading data and assign data to variables
+```{r}
+library(FNN)
+```
+```{r knn}
+knn_total = list()
+for(j in 1:8){
+  knn_result = list()
+  for( i in 1:24 ){
+    train_y = as.data.frame(train_respondent[[j]][,i])
+    knn_result[[i]] = knn.reg(train = train_variable[[j]],test = test_variable[[j]],y = train_y, k = 1)
+  }
+  knn_total[[j]] = knn_result
+}
+```
+```{r mse}
+total_mse = list()
+for(j in 1:8){
+  knn_mse = list()
+  for(i in 1:24){
+    test_y = as.data.frame(test_respondent[[j]][,i])
+    pred_y = as.data.frame(knn_total[[j]][[i]]$pred)
+    square = (test_y - pred_y)^2
+    knn_mse[[i]] = sum(square)/nrow(square)
+  }
+  total_mse[[j]] = knn_mse
+}
+```
+
+
+
+
+
+
+
+
+

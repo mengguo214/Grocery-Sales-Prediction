@@ -1,0 +1,93 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+library(readxl)
+library(tree)
+library(Metrics)
+library(randomForest)
+library(gbm)
+
+# read file
+
+Store = list()
+Store[[1]] = read_excel("Store2-1.xlsx")
+Store[[2]] = read_excel("Store3-1.xlsx")
+Store[[3]] = read_excel("Store4-1.xlsx")
+Store[[4]] = read_excel("Store5-1.xlsx")
+Store[[5]] = read_excel("Store6-1.xlsx")
+Store[[6]] = read_excel("Store7-1.xlsx")
+Store[[7]] = read_excel("Store8-1.xlsx")
+Store[[8]] = read_excel("Store9-1.xlsx")
+
+# regression tree
+RMSE.regression = list()
+RMSE.prune = list()
+RMSE.bagging = list()
+RMSE.rf = list()
+for (i in 1:8){
+  train = (Store[[i]]$Random == 'Train')
+  store_train = Store[[i]][train,]
+  store_test = Store[[i]][!train,]
+  y = data.frame(Store[[i]][99:122])
+  y_test = data.frame(store_test[99:122])
+  RMSE_regression = c()
+  RMSE_prune = c()
+  RMSE_bagging = c()
+  RMSE_rf = c()
+  for (j in 1:24){
+    # regression tree
+    tree.train = tree(y[,j]~.,Store[[i]],subset=train)
+    tree.pred=predict(tree.train,store_test)
+    RMSE_regression[j] = rmse(y_test[,j],tree.pred)
+    
+    # pruning
+    cv.store=cv.tree(tree.train)
+    n = cv.store$size[cv.store$dev == min(cv.store$dev)]
+    prune.train = prune.tree(tree.train,best=n)
+    pred.prune = predict(prune.train,store_test)
+    RMSE_prune[j] = rmse(y_test[,j],pred.prune)
+    
+    # bagging
+    set.seed(1)
+    bag.store = randomForest(y[,j]~.-Random,data=Store[[i]],subset=train,mtry=123,importance=TRUE)
+    pred.bag = predict(bag.store, newdata = store_test)
+    RMSE_bagging[j] = rmse(y_test[,j],pred.bag)
+    
+    # random forest
+    set.seed(1)
+    rf.store = randomForest(y[,j]~.-Random,data=Store[[i]],subset=train,mtry=120,importance = TRUE)
+    pred.rf = predict(rf.store, newdata = store_test)
+    RMSE_rf[j] = rmse(y_test[,j],pred.rf)
+
+  }
+  RMSE.regression[[i]] = RMSE_regression
+  RMSE.prune[[i]] = RMSE_prune
+  RMSE.bagging[[i]] = RMSE_bagging
+  RMSE.rf[[i]] = RMSE_rf
+}
+
+RMSE.regression
+RMSE.prune
+RMSE.bagging
+RMSE.rf
+```
+
+#set.seed(1)
+#train = (Store[[2]]$Random == 'Train')
+#store_train = Store[[2]][train,]
+#store_test = Store[[2]][!train,]
+#y = data.frame(Store[[2]][99:122])
+#y_train = data.frame(store_train[99:122])
+#y_test = data.frame(store_test[99:122])
+#boost.store = gbm(y_train[,2]~.-Random,store_train,distribution = "gaussian", #n.trees=500,shrinkage=0.2,interaction.depth=4)
+#pred.boost=predict(boost.store,newdata=store_test,n.trees=500)
+#rmse(y_test[,2],pred.boost)

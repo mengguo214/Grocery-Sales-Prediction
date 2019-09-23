@@ -1,0 +1,83 @@
+---
+title: "rf_tune"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## find the optimized mtry
+
+
+```{r }
+library(readxl)
+library(tree)
+library(Metrics)
+library(randomForest)
+library(gbm)
+
+# read file
+Store = list()
+set.seed(1)
+Store[[1]] = read_excel("Store2-1.xlsx")
+Store[[2]] = read_excel("Store3-1.xlsx")
+Store[[3]] = read_excel("Store4-1.xlsx")
+Store[[4]] = read_excel("Store5-1.xlsx")
+Store[[5]] = read_excel("Store6-1.xlsx")
+Store[[6]] = read_excel("Store7-1.xlsx")
+Store[[7]] = read_excel("Store8-1.xlsx")
+Store[[8]] = read_excel("Store9-1.xlsx")
+```
+
+```{r}
+
+for (k in 5:8){
+  train = (Store[[k]]$Random == 'Train')
+  store_train = Store[[k]][train,]
+  store_test = Store[[k]][!train,]
+  y = data.frame(Store[[k]][99:122])
+  y_train = data.frame(store_train[99:122])
+  y_test = data.frame(store_test[99:122])
+  #R = list()
+  
+  M = 23
+
+  # try 100 - 122 mtry
+  mtry = c(1:M)
+  rf.mse = c(1:M)
+  rf.mse[1:M] = 0
+  RMSE.rf = c()
+  for (j in 1:24){
+    for (i in 1:95){
+      set.seed(1)
+      f=as.formula(paste(Store[[k]][j+98],"~",paste(colnames(Store[[k]])[3:98],collapse="+")))
+      rf.store = randomForest(f,data=Store[[k]],subset=train,mtry=(i),importance = TRUE)
+      pred.rf = predict(rf.store, newdata = store_test)
+      rf.mse[i] = rmse(y_test[,j],pred.rf)
+  }
+    RMSE.rf[j] = min(rf.mse)
+    print(j)
+    print(RMSE.rf[j])
+  }
+  print(k)
+  R[[k]] = RMSE.rf
+}
+
+
+
+name = c('Store_1', 'Store_2',  'Store_3',  'Store_4',  'Store_5', 'Store_6', 'Store_7',  'Store_8')
+
+names(R) = paste(name)
+write.csv(R, "rf_1.csv", row.names=FALSE)
+```
+[[1]]
+ [1] 478.05952  16.16312 104.24136 350.45669  30.24294 589.50354 220.10641 276.00271 288.14041 132.35613 368.08585
+[12] 157.33097 240.58279 198.40332 147.85342 119.00026  33.31940 787.30551 224.18594 113.07452 724.71000  14.27647
+[23] 452.53614 190.85133
+
+
+
+
+
+```

@@ -1,0 +1,67 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+library(readxl)
+library(tree)
+library(Metrics)
+library(randomForest)
+library(gbm)
+
+# read file
+
+Store = list()
+Store[[1]] = read_excel("Store2-1.xlsx")
+Store[[2]] = read_excel("Store3-1.xlsx")
+Store[[3]] = read_excel("Store4-1.xlsx")
+Store[[4]] = read_excel("Store5-1.xlsx")
+Store[[5]] = read_excel("Store6-1.xlsx")
+Store[[6]] = read_excel("Store7-1.xlsx")
+Store[[7]] = read_excel("Store8-1.xlsx")
+Store[[8]] = read_excel("Store9-1.xlsx")
+
+RMSE.boosted = list()
+for (i in 1:8){
+  train = (Store[[i]]$Random == 'Train')
+  store_train = Store[[i]][train,]
+  store_test = Store[[i]][!train,]
+  y = data.frame(Store[[i]][99:122])
+  y_train = data.frame(store_train[99:122])
+  y_test = data.frame(store_test[99:122])
+
+  RMSE_boosted = c()
+  for (j in 1:24){
+    
+    # boosted
+    set.seed(1)
+    boost.store = gbm(y_train[,j]~.-Random,store_train,distribution = "gaussian", n.trees=5000,shrinkage=0.2,interaction.depth=4)
+    pred.boost=predict(boost.store,newdata=store_test,n.trees=5000)
+    RMSE_boosted[j] = rmse(y_test[,j],pred.boost)
+
+  }
+
+  RMSE.boosted[[i]] = RMSE_boosted
+  
+}
+
+RMSE.boosted
+```
+
+#set.seed(1)
+#train = (Store[[2]]$Random == 'Train')
+#store_train = Store[[2]][train,]
+#store_test = Store[[2]][!train,]
+#y = data.frame(Store[[2]][99:122])
+#y_train = data.frame(store_train[99:122])
+#y_test = data.frame(store_test[99:122])
+#boost.store = gbm(y_train[,2]~.-Random,store_train,distribution = "gaussian", #n.trees=500,shrinkage=0.2,interaction.depth=4)
+#pred.boost=predict(boost.store,newdata=store_test,n.trees=500)
+#rmse(y_test[,2],pred.boost)

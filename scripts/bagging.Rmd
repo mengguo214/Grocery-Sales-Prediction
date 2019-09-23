@@ -1,0 +1,58 @@
+---
+title: "bagging"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## bagging
+
+```{r}
+
+library(readxl)
+library(tree)
+library(Metrics)
+library(randomForest)
+library(gbm)
+
+# read file
+
+Store = list()
+Store[[1]] = read_excel("Store2-1.xlsx")
+Store[[2]] = read_excel("Store3-1.xlsx")
+Store[[3]] = read_excel("Store4-1.xlsx")
+Store[[4]] = read_excel("Store5-1.xlsx")
+Store[[5]] = read_excel("Store6-1.xlsx")
+Store[[6]] = read_excel("Store7-1.xlsx")
+Store[[7]] = read_excel("Store8-1.xlsx")
+Store[[8]] = read_excel("Store9-1.xlsx")
+
+# regression tree
+RMSE.bagging = list()
+
+
+for (i in 1:8){
+  train = (Store[[i]]$Random == 'Train')
+  store_train = Store[[i]][train,]
+  store_test = Store[[i]][!train,]
+  y = data.frame(Store[[i]][99:122])
+  y_test = data.frame(store_test[99:122])
+  RMSE_bagging = c()
+  for (j in 1:24){
+    # bagging
+    set.seed(1)
+    f=as.formula(paste(Store[[i]][j+98],"~",paste(colnames(Store[[i]])[3:98],collapse="+")))
+    bag.store = randomForest(f,data=Store[[i]],subset=train,mtry=96,importance=TRUE)
+    pred.bag = predict(bag.store, newdata = store_test)
+    RMSE_bagging[j] = rmse(y_test[,j],pred.bag)
+  }
+  RMSE.bagging[[i]] = RMSE_bagging
+}
+
+name = c('Store_1', 'Store_2',  'Store_3',  'Store_4',  'Store_5', 'Store_6', 'Store_7',  'Store_8')
+RMSE.bagging = as.data.frame(RMSE.bagging)
+names(RMSE.bagging) = paste(name)
+write.csv(RMSE.bagging, "bagging_new.csv", row.names=FALSE)
+```
